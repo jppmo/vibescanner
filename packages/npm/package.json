@@ -1,0 +1,23 @@
+{
+  "name": "vibescan",
+  "version": "0.1.0",
+  "description": "Security scanner for AI-generated code",
+  "keywords": ["security", "scanner", "ai", "vibe-coding", "static-analysis"],
+  "homepage": "https://github.com/jppmo/vibescan",
+  "bugs": "https://github.com/jppmo/vibescan/issues",
+  "license": "MIT",
+  "author": "jppmo",
+  "bin": {
+    "vibescan": "./bin/vibescan.js"
+  },
+  "scripts": {
+    "postinstall": "node scripts/postinstall.js"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "files": [
+    "bin/",
+    "scripts/"
+  ]
+}

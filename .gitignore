@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.venv/
+venv/
+.uv/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Node
+node_modules/
+.next/
+npm-debug.log*
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Ruff
+.ruff_cache/
+
+# Private keys — real ones should never be committed.
+# Test fixtures under tests/fixtures/ are intentionally committed.
+*.pem
+*.key
+*.p12
+*.pfx
+!packages/scanner/tests/fixtures/**/*.pem
+!packages/scanner/tests/fixtures/**/*.key
+
+# Claude Code local settings and .md files
+.claude/
+CLAUDE.md
+PLAN.md

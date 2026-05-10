@@ -1,0 +1,54 @@
+[tool.uv.workspace]
+members = ["packages/scanner", "packages/cli"]
+
+[tool.uv.sources]
+vibescan-scanner = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "ruff>=0.9",
+    "pytest>=8",
+    "pytest-cov>=6",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "D100",   # missing docstring in public module
+    "D104",   # missing docstring in public package
+    "D105",   # missing docstring in magic method
+    "D107",   # missing docstring in __init__
+    "ANN101", # missing type annotation for self
+    "ANN102", # missing type annotation for cls
+    "ERA001", # allow commented-out code
+    "FIX002", # line contains FIXME
+    "TD002",  # missing TODO author
+    "TD003",  # missing TODO issue link
+    "COM812", # trailing comma (conflicts with ruff formatter)
+    "ISC001", # implicit string concat (conflicts with ruff formatter)
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.isort]
+known-first-party = ["vibescan", "vibescan_cli"]
+
+[tool.pytest.ini_options]
+testpaths = ["packages/scanner/tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--tb=short -v"
+
+[tool.coverage.run]
+source = ["packages/scanner/vibescan"]
+omit = ["*/tests/*"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true

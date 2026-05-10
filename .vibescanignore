@@ -1,0 +1,3 @@
+# Intentionally vulnerable fixture files used to test the scanner rules.
+# These produce findings by design — exclude them from the dogfood scan.
+packages/scanner/tests/fixtures
