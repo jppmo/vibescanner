@@ -42,7 +42,7 @@ if (!pythonCmd) {
   console.warn(
     "\nvibescan: Python 3.10+ is required but was not found.\n" +
       "Install Python from https://python.org and then run:\n" +
-      "  pip install vibescan\n"
+      "  pip install vibescan-cli\n"
   );
   process.exit(0);
 }
@@ -50,7 +50,7 @@ if (!pythonCmd) {
 if (!hasPip(pythonCmd)) {
   console.warn(
     "\nvibescan: pip not found. Install pip and then run:\n" +
-      "  pip install vibescan\n"
+      "  pip install vibescan-cli\n"
   );
   process.exit(0);
 }
@@ -61,12 +61,12 @@ if (hasVibescan(pythonCmd)) {
 
 console.log("vibescan: installing Python package...");
 try {
-  execSync(`${pythonCmd} -m pip install vibescan --quiet`, {
+  execSync(`${pythonCmd} -m pip install vibescan-cli --quiet`, {
     stdio: "inherit",
   });
 } catch (err) {
   console.warn(
     "\nvibescan: pip install failed. Install manually with:\n" +
-      "  pip install vibescan\n"
+      "  pip install vibescan-cli\n"
   );
 }
