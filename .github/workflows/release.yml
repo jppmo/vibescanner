@@ -25,19 +25,13 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-packages
 
-      - name: Build scanner package
-        run: uv build --package vibescan-scanner
+      - name: Build packages
+        run: |
+          uv build --package vibescan-scanner
+          uv build --package vibescan
 
-      - name: Build CLI package
-        run: uv build --package vibescan
-
-      - name: Publish scanner to PyPI
-        run: uv publish --package vibescan-scanner
-        env:
-          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
-
-      - name: Publish CLI to PyPI
-        run: uv publish --package vibescan
+      - name: Publish to PyPI
+        run: uv publish
         env:
           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
 
