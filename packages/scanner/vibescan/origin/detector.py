@@ -3,7 +3,10 @@ from __future__ import annotations
 import logging
 import re
 import subprocess
-from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 from vibescan.classifier.pattern import PatternClassifier
 
@@ -33,12 +36,13 @@ class GitMetadataDetector:
 
     def detect(self, repo_path: Path) -> tuple[float, str | None]:
         try:
-            result = subprocess.run(  # noqa: S603
+            result = subprocess.run(
                 ["git", "log", "--format=%B"],
                 cwd=repo_path,
                 capture_output=True,
                 text=True,
                 timeout=10,
+                check=False,
             )
         except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
             return 0.0, None

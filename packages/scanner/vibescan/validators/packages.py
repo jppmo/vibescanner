@@ -4,7 +4,7 @@ import json
 import logging
 import tomllib
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Literal
@@ -81,14 +81,14 @@ class PackageManifestParser:
 
         # Version spec prefixes that indicate a local/workspace package — skip registry lookup
         # "*" as a version in a monorepo always resolves to the local workspace package
-        _LOCAL_PREFIXES = ("workspace:", "file:", "link:", "portal:", "/", ".")
-        _LOCAL_EXACT = {"*"}
+        local_prefixes = ("workspace:", "file:", "link:", "portal:", "/", ".")
+        local_exact = {"*"}
 
         packages: list[Package] = []
         for section in ("dependencies", "devDependencies", "peerDependencies", "optionalDependencies"):
             for name, version_spec in data.get(section, {}).items():
                 spec = str(version_spec)
-                if spec in _LOCAL_EXACT or any(spec.startswith(p) for p in _LOCAL_PREFIXES):
+                if spec in local_exact or any(spec.startswith(p) for p in local_prefixes):
                     continue  # local/workspace package — never on the public registry
                 packages.append(Package(name=name, version_spec=spec, ecosystem="npm"))
         return packages
@@ -98,7 +98,7 @@ class PackageManifestParser:
         packages: list[Package] = []
         for raw_line in source.decode(errors="replace").splitlines():
             line = raw_line.strip()
-            if not line or line.startswith("#") or line.startswith("-"):
+            if not line or line.startswith(("#", "-")):
                 continue
             # Strip inline comments
             line = line.split("#")[0].strip()

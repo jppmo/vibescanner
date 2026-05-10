@@ -5,19 +5,22 @@ import inspect
 import logging
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING, Iterator
+from typing import TYPE_CHECKING
 
 import tree_sitter_javascript as ts_js
 import tree_sitter_python as ts_py
 import tree_sitter_typescript as ts_ts
 from tree_sitter import Language, Parser
 
-from vibescan.models import Finding
 from vibescan.origin.detector import AIOriginDetector
 from vibescan.rules.base import BaseRule
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from tree_sitter import Tree
+
+    from vibescan.models import Finding
 
 logger = logging.getLogger(__name__)
 
@@ -88,8 +91,8 @@ def _load_ignore_patterns(repo_path: Path) -> list[str]:
     if not ignore_file.exists():
         return []
     patterns = []
-    for line in ignore_file.read_text().splitlines():
-        line = line.strip()
+    for raw in ignore_file.read_text().splitlines():
+        line = raw.strip()
         if line and not line.startswith("#"):
             patterns.append(line.rstrip("/"))
     return patterns
@@ -230,7 +233,7 @@ class ScanEngine:
             try:
                 module = importlib.import_module(module_name)
             except Exception:
-                logger.exception("Failed to import rule module", extra={"module": module_name})
+                logger.exception("Failed to import rule module", extra={"rule_module": module_name})
                 continue
 
             for _, obj in inspect.getmembers(module, inspect.isclass):

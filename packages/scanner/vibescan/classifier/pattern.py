@@ -44,7 +44,7 @@ class PatternClassifier:
         # Signal 2: AI-characteristic phrase density
         try:
             decoded = source.decode("utf-8", errors="replace")
-        except Exception:  # noqa: BLE001
+        except Exception:
             return 0.0
 
         phrase_hits = len(_AI_PHRASE_RE.findall(decoded))

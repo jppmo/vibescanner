@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from typing import ClassVar
 
 from vibescan.models import Finding
 from vibescan.rules.base import BaseRule
@@ -60,7 +61,7 @@ class FrontendExposedSecretsRule(BaseRule):
     id = "VCS-011"
     name = "Secret exposed via frontend environment variable prefix"
     severity = "HIGH"
-    languages = ["env"]
+    languages: ClassVar[list[str]] = ["env"]
 
     def visit(self, tree, source: bytes, filepath: str) -> list[Finding]:
         name = Path(filepath).name.lower()

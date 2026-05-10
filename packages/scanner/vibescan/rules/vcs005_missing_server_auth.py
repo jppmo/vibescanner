@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import ClassVar
+
 from vibescan.models import Finding
 from vibescan.rules.base import BaseRule
 
@@ -69,9 +71,7 @@ def _is_route_call(node) -> bool:
         return False
     # Exclude ORM/ODM objects whose .post()/.get() are hooks, not HTTP routes
     obj = func.child_by_field_name("object")
-    if obj is not None and obj.text.decode().lower() in _NON_ROUTER_OBJECTS:
-        return False
-    return True
+    return obj is None or obj.text.decode().lower() not in _NON_ROUTER_OBJECTS
 
 
 def _extract_js_path(string_node) -> str:
@@ -199,9 +199,9 @@ class MissingServerAuthRule(BaseRule):
     id = "VCS-005"
     name = "Route handler missing server-side auth"
     severity = "HIGH"
-    languages = ["javascript", "typescript", "tsx", "python"]
+    languages: ClassVar[list[str]] = ["javascript", "typescript", "tsx", "python"]
 
-    def visit(self, tree, source, filepath):  # noqa: ANN001
+    def visit(self, tree, source: bytes, filepath: str) -> list[Finding]:
         if tree is None:
             return []
 

@@ -3,15 +3,11 @@ from __future__ import annotations
 import logging
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import click
 from rich.console import Console
 
 from vibescan_cli.formatters import HumanFormatter, JSONFormatter
-
-if TYPE_CHECKING:
-    pass
 
 _SEVERITY_RANK = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}
 
@@ -94,7 +90,7 @@ def scan(
     try:
         engine = ScanEngine(path)
         findings = engine.scan()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         Console(stderr=True).print(f"[bold red]Error:[/] {exc}")
         sys.exit(3)
 
@@ -116,8 +112,10 @@ def scan(
     else:
         human = HumanFormatter(console=console)
         if output_path:
-            file_console = Console(file=open(output_path, "w"), highlight=False)  # noqa: SIM115, WPS515
-            HumanFormatter(console=file_console).write(findings, path, repo_ai_score=repo_ai_score, repo_ai_tool=repo_ai_tool)
+            with Path(output_path).open("w") as fh:
+                HumanFormatter(console=Console(file=fh, highlight=False)).write(
+                    findings, path, repo_ai_score=repo_ai_score, repo_ai_tool=repo_ai_tool
+                )
         else:
             human.write(findings, path, repo_ai_score=repo_ai_score, repo_ai_tool=repo_ai_tool)
 

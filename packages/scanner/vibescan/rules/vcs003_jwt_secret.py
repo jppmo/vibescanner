@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 from collections import Counter
+from typing import ClassVar
 
 from vibescan.models import Finding
 from vibescan.rules.base import BaseRule
@@ -68,10 +69,7 @@ def _string_value(node) -> str | None:
                 return child.text.decode(errors="replace")
         return ""
 
-    if node.type == "template_string":
-        # template_substitution nodes are the ${...} interpolations.
-        # If there are none, the template is a plain string.
-        if not any(c.type == "template_substitution" for c in node.named_children):
+    if node.type == "template_string" and not any(c.type == "template_substitution" for c in node.named_children):
             fragments = [c for c in node.named_children if c.type == "string_fragment"]
             return "".join(f.text.decode(errors="replace") for f in fragments)
 
@@ -110,9 +108,9 @@ class JWTHardcodedSecretRule(BaseRule):
     id = "VCS-003"
     name = "JWT secret hardcoded or weak"
     severity = "CRITICAL"
-    languages = ["javascript", "typescript", "tsx"]
+    languages: ClassVar[list[str]] = ["javascript", "typescript", "tsx"]
 
-    def visit(self, tree, source, filepath):  # noqa: ANN001
+    def visit(self, tree, source: bytes, filepath: str) -> list[Finding]:
         if tree is None:
             return []
 

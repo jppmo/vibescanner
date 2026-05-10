@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from typing import ClassVar
 
 from vibescan.models import Finding
 from vibescan.rules.base import BaseRule
@@ -29,9 +30,9 @@ class SupabaseRLSRule(BaseRule):
     id = "VCS-001"
     name = "Supabase RLS not enabled"
     severity = "CRITICAL"
-    languages = ["sql"]
+    languages: ClassVar[list[str]] = ["sql"]
 
-    def visit(self, tree, source, filepath):  # noqa: ANN001
+    def visit(self, tree, source: bytes, filepath: str) -> list[Finding]:
         text = source.decode(errors="replace")
 
         # RLS is a Supabase concept — only scan SQL in Supabase project contexts.

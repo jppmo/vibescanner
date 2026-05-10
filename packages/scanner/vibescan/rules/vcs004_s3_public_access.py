@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from typing import ClassVar
 
 from vibescan.models import Finding
 from vibescan.rules.base import BaseRule
@@ -17,7 +18,7 @@ _TF_RESOURCE_RE = re.compile(
 # Extracts the referenced S3 bucket resource name from an access block body
 # e.g. bucket = aws_s3_bucket.my_bucket.id  →  "my_bucket"
 _TF_BUCKET_REF_RE = re.compile(
-    r'bucket\s*=\s*aws_s3_bucket\.(\w+)\b',
+    r"bucket\s*=\s*aws_s3_bucket\.(\w+)\b",
 )
 
 _REQUIRED_SETTINGS = (
@@ -126,9 +127,9 @@ class S3PublicAccessBlockRule(BaseRule):
     id = "VCS-004"
     name = "S3 bucket without public access block"
     severity = "CRITICAL"
-    languages = ["terraform", "typescript", "tsx"]
+    languages: ClassVar[list[str]] = ["terraform", "typescript", "tsx"]
 
-    def visit(self, tree, source, filepath):  # noqa: ANN001
+    def visit(self, tree, source: bytes, filepath: str) -> list[Finding]:
         text = source.decode(errors="replace")
 
         if filepath.endswith(".tf"):

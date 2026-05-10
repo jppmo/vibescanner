@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from typing import ClassVar
 
 from vibescan.models import Finding
 from vibescan.rules.base import BaseRule
@@ -29,9 +30,9 @@ class FirebaseOpenRulesRule(BaseRule):
     id = "VCS-002"
     name = "Firebase open read/write rules"
     severity = "CRITICAL"
-    languages = ["firebase_rules", "json"]
+    languages: ClassVar[list[str]] = ["firebase_rules", "json"]
 
-    def visit(self, tree, source, filepath):  # noqa: ANN001
+    def visit(self, tree, source: bytes, filepath: str) -> list[Finding]:
         text = source.decode(errors="replace")
         suffix = Path(filepath).suffix
 

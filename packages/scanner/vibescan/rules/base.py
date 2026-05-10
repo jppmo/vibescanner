@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Literal
 if TYPE_CHECKING:
     from tree_sitter import Tree
 
-from vibescan.models import Finding
+    from vibescan.models import Finding
 
 
 class BaseRule(ABC):

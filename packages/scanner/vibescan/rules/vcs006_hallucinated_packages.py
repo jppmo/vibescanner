@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
+from typing import ClassVar
 
 from vibescan.models import Finding
 from vibescan.rules.base import BaseRule
@@ -42,12 +43,12 @@ class HallucinatedPackageRule(BaseRule):
     id = "VCS-006"
     name = "Hallucinated or suspicious package"
     severity = "CRITICAL"
-    languages = ["json", "toml", "text"]
+    languages: ClassVar[list[str]] = ["json", "toml", "text"]
 
     def __init__(self) -> None:
         self._validator = _get_validator()
 
-    def visit(self, tree, source, filepath):  # noqa: ANN001
+    def visit(self, tree, source: bytes, filepath: str) -> list[Finding]:
         filename = Path(filepath).name
         if filename not in _MANIFEST_FILENAMES:
             return []
@@ -65,7 +66,7 @@ class HallucinatedPackageRule(BaseRule):
         findings: list[Finding] = []
 
         for result in results:
-            if result.error and result.error not in ("fetch_error",):
+            if result.error and result.error != "fetch_error":
                 # Registry returned an unexpected status — don't emit a finding
                 continue
 

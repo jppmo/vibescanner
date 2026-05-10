@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from typing import ClassVar
 
 from vibescan.models import Finding
 from vibescan.rules.base import BaseRule
@@ -74,7 +75,7 @@ class CommittedSecretsRule(BaseRule):
     id = "VCS-010"
     name = "Private key or secret committed to repository"
     severity = "CRITICAL"
-    languages = ["pem", "env"]
+    languages: ClassVar[list[str]] = ["pem", "env"]
 
     def visit(self, tree, source: bytes, filepath: str) -> list[Finding]:
         name = Path(filepath).name.lower()
