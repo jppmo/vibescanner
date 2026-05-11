@@ -1,8 +1,6 @@
 [tool.uv.workspace]
-members = ["packages/scanner", "packages/cli"]
+members = ["packages/scanner"]
 
-[tool.uv.sources]
-vibescan-scanner = { workspace = true }
 
 [dependency-groups]
 dev = [
@@ -48,7 +46,7 @@ ignore = [
 convention = "google"
 
 [tool.ruff.lint.isort]
-known-first-party = ["vibescan", "vibescan_cli"]
+known-first-party = ["vibescan"]
 
 [tool.pytest.ini_options]
 testpaths = ["packages/scanner/tests"]

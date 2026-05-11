@@ -11,7 +11,7 @@ We scanned 20 public repos built with Lovable, Cursor, Claude Code, and ChatGPT.
 ## Install
 
 ```bash
-pip install vibescan-cli
+pip install vibescan-scanner
 ```
 
 Requires Python 3.10+.
@@ -134,7 +134,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install vibescan-cli
+      - run: pip install vibescan-scanner
       - run: vibescan scan . --fail-on CRITICAL --format json --output findings.json
       - uses: actions/upload-artifact@v4
         if: always()

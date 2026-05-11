@@ -68,7 +68,7 @@ It also scores each finding by AI-origin confidence, using git `Co-authored-by` 
 ### Install
 
 ```bash
-pip install vibescan-cli
+pip install vibescan-scanner
 vibescan scan .
 ```
 
@@ -93,7 +93,7 @@ Happy to answer questions about any of the findings or the rule implementation.
 
 I kept seeing the same mistakes in every vibe-coded project I reviewed — no Supabase RLS, no auth on half the routes, secrets in `.env` files that got committed. So I wrote a scanner for them.
 
-Vibescan is a CLI tool (pip install vibescan-cli) that checks for these patterns specifically. Scanned 20 public repos built with various AI tools:
+Vibescan is a CLI tool (pip install vibescan-scanner) that checks for these patterns specifically. Scanned 20 public repos built with various AI tools:
 
 - 2 had payment/user tables with no RLS (anyone logged in could read all data)
 - 5 had API routes with zero authentication

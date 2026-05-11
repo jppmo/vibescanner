@@ -38,6 +38,6 @@ for (const pythonCmd of ["python3", "python"]) {
 
 console.error(
   "vibescan: could not find the vibescan Python package.\n" +
-    "Run: pip install vibescan-cli"
+    "Run: pip install vibescan-scanner"
 );
 process.exit(3);
