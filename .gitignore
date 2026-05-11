@@ -54,3 +54,5 @@ Thumbs.db
 .claude/
 CLAUDE.md
 PLAN.md
+# Corpus scan output (large; see scripts/build_seed.py and scripts/scan_corpus.py)
+corpus/
