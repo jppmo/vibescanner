@@ -144,3 +144,55 @@ create table users (id uuid);
 alter table users enable row level security;
 """.strip()
     assert scan(sql) == []
+
+
+# ---------------------------------------------------------------------------
+# Regression: false positives surfaced by the corpus scan
+# ---------------------------------------------------------------------------
+
+
+def test_skips_internal_supabase_auth_schema():
+    """auth.users etc are managed by Supabase; never flag them."""
+    sql = """
+CREATE TABLE auth.users (id uuid);
+CREATE TABLE auth.refresh_tokens (id uuid);
+CREATE TABLE auth.audit_log_entries (id uuid);
+"""
+    assert scan(sql) == []
+
+
+def test_skips_internal_postgres_schemas():
+    sql = """
+CREATE TABLE pg_catalog.pg_things (id int);
+CREATE TABLE storage.objects (id uuid);
+CREATE TABLE realtime.subscription (id int);
+CREATE TABLE extensions.helper (id int);
+CREATE TABLE supabase_migrations.schema_migrations (version text);
+"""
+    assert scan(sql) == []
+
+
+def test_flags_user_table_alongside_internal_schema():
+    """Real user tables must still fire even when internal-schema tables share the file."""
+    sql = """
+CREATE TABLE auth.users (id uuid);
+CREATE TABLE public.payments (id uuid, amount numeric);
+"""
+    findings = scan(sql)
+    assert len(findings) == 1
+    assert "payments" in findings[0].snippet
+
+
+def test_skips_files_under_test_directories():
+    """Test fixture migrations should not be flagged."""
+    sql = "CREATE TABLE public.users (id uuid);"
+    test_paths = [
+        "/repo/test/supabase/migrations/schema.sql",
+        "/repo/tests/supabase/migrations/schema.sql",
+        "/repo/__tests__/migrations/schema.sql",
+        "/repo/fixtures/supabase/schema.sql",
+        "/repo/spec/migrations/init.sql",
+        "/repo/examples/supabase/schema.sql",
+    ]
+    for path in test_paths:
+        assert rule.visit(None, sql.encode(), path) == [], f"unexpected finding at {path}"

@@ -179,3 +179,44 @@ def test_quoted_value_detected():
 
 def test_empty_env_file():
     assert rule.visit(None, b"", "/repo/.env") == []
+
+
+# ---------------------------------------------------------------------------
+# Regression: false positives surfaced by the corpus scan
+# ---------------------------------------------------------------------------
+
+
+def test_skips_test_env_file_variants():
+    """.env.e2e, .env.test, .env.local — never flag these."""
+    source = b"DATABASE_PASSWORD=actual_looking_value_12345\n"
+    for name in (".env.e2e", ".env.test", ".env.local", ".env.dev", ".env.development", ".env.ci"):
+        assert rule.visit(None, source, f"/repo/{name}") == [], f"unexpected finding in {name}"
+
+
+def test_skips_local_supabase_test_jwt():
+    """The local Supabase service_role JWT (well-known constant) is not a real secret."""
+    jwt = "eyJhbGciOiJFUzI1NiIsImtpZCI6ImIzM2Q0Njk2LWMwNzUtNGEzNy04OWRhLTVhYWM5ZjYwZDMxYyIsInR5cCI6IkpXVCJ9.payload.sig"
+    source = f"SERVICE_ROLE_KEY={jwt}\n".encode()
+    assert rule.visit(None, source, "/repo/.env.e2e") == []
+    # Also skipped in a regular .env (well-known constant, not a real prod secret)
+    assert rule.visit(None, source, "/repo/.env") == []
+
+
+def test_skips_test_prefixed_placeholder_values():
+    """testpwd, test_password, test-secret etc are placeholder values, not real secrets."""
+    sources = [
+        b"POSTMARK_WEBHOOK_PASSWORD=testpwd\n",
+        b"API_TOKEN=test_password\n",
+        b"DB_SECRET=test-secret\n",
+        b"ADMIN_PASSWORD=mypassword\n",
+        b"SLACK_TOKEN=my-secret\n",
+    ]
+    for src in sources:
+        assert rule.visit(None, src, "/repo/.env") == [], f"unexpected finding for {src!r}"
+
+
+def test_real_looking_secret_still_fires():
+    """Make sure regression fixes did not destroy real detections."""
+    real = b"STRIPE_SECRET_KEY=" + b"k" * 80 + b"_realvalue123abc\n"
+    findings = rule.visit(None, real, "/repo/.env")
+    assert len(findings) == 1

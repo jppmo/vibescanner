@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -294,3 +295,88 @@ def test_clean_requirements_txt_fixture():
     source = (FIXTURES / "clean_requirements.txt").read_bytes()
     findings = rule.visit(None, source, "requirements.txt")
     assert findings == []
+
+
+# ---------------------------------------------------------------------------
+# Regression: workspace packages flagged as hallucinations (corpus FP)
+# ---------------------------------------------------------------------------
+
+
+def test_skips_packages_declared_in_parent_workspaces(tmp_path):
+    """A monorepo subpackage depending on a sibling workspace must not be flagged."""
+    # Parent package.json with workspaces
+    (tmp_path / "package.json").write_text(json.dumps({
+        "name": "monorepo-root",
+        "private": True,
+        "workspaces": ["packages/*"],
+    }))
+
+    # Sibling workspace package
+    sib = tmp_path / "packages" / "shared-utils"
+    sib.mkdir(parents=True)
+    (sib / "package.json").write_text(json.dumps({"name": "shared-utils", "version": "1.0.0"}))
+
+    # The package being scanned depends on the sibling
+    inner = tmp_path / "packages" / "consumer"
+    inner.mkdir()
+    inner_pkg = inner / "package.json"
+    inner_pkg.write_text(json.dumps({
+        "name": "consumer",
+        "dependencies": {"shared-utils": "^1.0.0"},
+    }))
+
+    # Validator would say shared-utils is 404 — but the rule should never call it
+    # because the workspace filter strips the package first.
+    results = [_make_result("shared-utils", exists=False)]
+    rule = _rule_with_results(results)
+
+    findings = rule.visit(None, inner_pkg.read_bytes(), str(inner_pkg))
+    assert findings == []
+
+
+def test_workspace_object_form_handled(tmp_path):
+    """Yarn-style workspaces: {packages: [...]} object form."""
+    (tmp_path / "package.json").write_text(json.dumps({
+        "name": "monorepo-root",
+        "workspaces": {"packages": ["apps/*"]},
+    }))
+
+    sib = tmp_path / "apps" / "shared-thing"
+    sib.mkdir(parents=True)
+    (sib / "package.json").write_text(json.dumps({"name": "shared-thing"}))
+
+    inner = tmp_path / "apps" / "consumer"
+    inner.mkdir()
+    inner_pkg = inner / "package.json"
+    inner_pkg.write_text(json.dumps({
+        "name": "consumer",
+        "dependencies": {"shared-thing": "*"},
+    }))
+
+    results = [_make_result("shared-thing", exists=False)]
+    rule = _rule_with_results(results)
+    assert rule.visit(None, inner_pkg.read_bytes(), str(inner_pkg)) == []
+
+
+def test_real_external_dep_in_monorepo_still_fires(tmp_path):
+    """A monorepo scan must still flag external hallucinated deps."""
+    (tmp_path / "package.json").write_text(json.dumps({
+        "name": "root", "workspaces": ["packages/*"],
+    }))
+    sib = tmp_path / "packages" / "real-sibling"
+    sib.mkdir(parents=True)
+    (sib / "package.json").write_text(json.dumps({"name": "real-sibling"}))
+
+    inner = tmp_path / "packages" / "consumer"
+    inner.mkdir()
+    inner_pkg = inner / "package.json"
+    inner_pkg.write_text(json.dumps({
+        "name": "consumer",
+        "dependencies": {"@made-up/never-exists": "^1.0.0"},
+    }))
+
+    results = [_make_result("@made-up/never-exists", exists=False)]
+    rule = _rule_with_results(results)
+    findings = rule.visit(None, inner_pkg.read_bytes(), str(inner_pkg))
+    assert len(findings) == 1
+    assert findings[0].snippet == '"@made-up/never-exists"'

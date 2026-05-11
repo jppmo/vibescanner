@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import os
 from pathlib import Path
@@ -22,6 +23,62 @@ _ANOMALY_THRESHOLD = 0.7
 
 def _get_validator() -> RegistryValidator:
     return RegistryValidator(redis_url=os.getenv("REDIS_URL"))
+
+
+def _workspace_package_names(manifest_path: Path) -> set[str]:
+    """Find package names declared in a parent monorepo's `workspaces` field.
+
+    Walks up from manifest_path looking for the first ancestor package.json
+    that declares `workspaces`. Globs the workspace patterns and collects the
+    `name` field of every matching package.json. Returns the lowercased name
+    set, or empty if no parent monorepo is found.
+    """
+    if manifest_path.name != "package.json":
+        return set()
+
+    current = manifest_path.parent.parent
+    seen_roots: set[Path] = set()
+    while current and current not in seen_roots and current != current.parent:
+        seen_roots.add(current)
+        parent_pkg = current / "package.json"
+        if parent_pkg.exists() and parent_pkg.resolve() != manifest_path.resolve():
+            try:
+                data = json.loads(parent_pkg.read_text())
+            except (OSError, json.JSONDecodeError):
+                data = None
+            if data is not None:
+                workspaces = data.get("workspaces")
+                patterns: list[str] = []
+                if isinstance(workspaces, list):
+                    patterns = [str(p) for p in workspaces]
+                elif isinstance(workspaces, dict):
+                    patterns = [str(p) for p in workspaces.get("packages", [])]
+                if patterns:
+                    return _collect_workspace_names(current, patterns)
+        current = current.parent
+    return set()
+
+
+def _collect_workspace_names(root: Path, patterns: list[str]) -> set[str]:
+    names: set[str] = set()
+    for pattern in patterns:
+        clean = pattern.rstrip("/").lstrip("./")
+        if not clean:
+            continue
+        try:
+            for match in root.glob(clean):
+                pkg_json = match / "package.json"
+                if not pkg_json.is_file():
+                    continue
+                try:
+                    name = json.loads(pkg_json.read_text()).get("name")
+                except (OSError, json.JSONDecodeError):
+                    continue
+                if isinstance(name, str) and name:
+                    names.add(name.lower())
+        except (OSError, ValueError):
+            continue
+    return names
 
 
 class HallucinatedPackageRule(BaseRule):
@@ -56,6 +113,14 @@ class HallucinatedPackageRule(BaseRule):
         packages = PackageManifestParser.parse(filename, source)
         if not packages:
             return []
+
+        # Skip names declared in a parent monorepo's `workspaces` — those are
+        # local sibling packages, not external dependencies.
+        workspace_names = _workspace_package_names(Path(filepath))
+        if workspace_names:
+            packages = [p for p in packages if p.name.lower() not in workspace_names]
+            if not packages:
+                return []
 
         if self.diff_context is not None:
             try:
