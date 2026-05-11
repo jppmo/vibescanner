@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+import logging
 import re
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 from typing import ClassVar
 
 from vibescan.models import Finding
 from vibescan.rules.base import BaseRule
+
+logger = logging.getLogger(__name__)
+
+# Cap repo-wide SQL discovery so a pathological monorepo can't slow scans.
+_MAX_REPO_SQL_FILES = 200
 
 # CREATE TABLE [IF NOT EXISTS] [schema.]tablename — captures schema as group(1)
 # and table name as group(3) (quoted) or group(4) (unquoted).
@@ -66,6 +72,49 @@ def _is_test_path(filepath: str) -> bool:
     return bool(parts & _TEST_DIR_SEGMENTS)
 
 
+def _find_repo_root(start: Path) -> Path | None:
+    """Walk up from a file looking for a git/Supabase project root."""
+    cur = start.resolve()
+    if cur.is_file():
+        cur = cur.parent
+    while cur != cur.parent:
+        if (cur / ".git").exists() or (cur / "supabase").is_dir():
+            return cur
+        cur = cur.parent
+    return None
+
+
+def _collect_repo_rls(root: Path) -> set[str]:
+    """Scan every SQL file under root for ALTER TABLE ... ENABLE RLS.
+
+    Used to fix the common Supabase split-migration pattern: tables defined
+    in `supabase/schemas/01_tables.sql`, RLS enabled in
+    `supabase/schemas/02_security.sql` or under `supabase/migrations/`.
+    """
+    enabled: set[str] = set()
+    try:
+        sql_files = list(root.rglob("*.sql"))
+    except (OSError, ValueError):
+        return enabled
+
+    if len(sql_files) > _MAX_REPO_SQL_FILES:
+        logger.debug("Skipping repo-wide RLS scan: %d sql files exceeds cap", len(sql_files))
+        return enabled
+
+    for path in sql_files:
+        if any(p.lower() in _TEST_DIR_SEGMENTS for p in path.parts):
+            continue
+        try:
+            text = path.read_text(errors="replace")
+        except OSError:
+            continue
+        for m in _RLS_RE.finditer(text):
+            name = (m.group(1) or m.group(2) or "").lower()
+            if name:
+                enabled.add(name)
+    return enabled
+
+
 class SupabaseRLSRule(BaseRule):
     """Detect Supabase tables created without Row Level Security enabled.
 
@@ -83,6 +132,18 @@ class SupabaseRLSRule(BaseRule):
     name = "Supabase RLS not enabled"
     severity = "CRITICAL"
     languages: ClassVar[list[str]] = ["sql"]
+
+    def __init__(self) -> None:
+        # Cache: repo_root -> set of RLS-enabled table names across all SQL files
+        self._repo_rls_cache: dict[Path, set[str]] = {}
+
+    def _repo_rls(self, filepath: str) -> set[str]:
+        root = _find_repo_root(Path(filepath))
+        if root is None:
+            return set()
+        if root not in self._repo_rls_cache:
+            self._repo_rls_cache[root] = _collect_repo_rls(root)
+        return self._repo_rls_cache[root]
 
     def visit(self, tree, source: bytes, filepath: str) -> list[Finding]:
         if _is_test_path(filepath):
@@ -122,6 +183,10 @@ class SupabaseRLSRule(BaseRule):
         rls_enabled: set[str] = {
             (m.group(1) or m.group(2)).lower() for m in _RLS_RE.finditer(text)
         }
+        # Union with RLS declared in sibling SQL files (cross-file tracking).
+        # Common Supabase pattern: tables in 01_tables.sql, RLS in 02_security.sql
+        # or under supabase/migrations/.
+        rls_enabled |= self._repo_rls(filepath)
 
         findings: list[Finding] = []
         for key, line_no, _schema, name in tables:

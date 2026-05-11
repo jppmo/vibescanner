@@ -196,3 +196,63 @@ def test_skips_files_under_test_directories():
     ]
     for path in test_paths:
         assert rule.visit(None, sql.encode(), path) == [], f"unexpected finding at {path}"
+
+
+# ---------------------------------------------------------------------------
+# Regression: cross-file RLS tracking (marmelab/atomic-crm corpus FP)
+# ---------------------------------------------------------------------------
+
+
+def test_cross_file_rls_satisfied_by_sibling_sql(tmp_path):
+    """Tables in one file, RLS enabled in a sibling SQL file — should not flag."""
+    # Mark this as a Supabase project root so _find_repo_root finds it
+    (tmp_path / ".git").mkdir()
+    schemas = tmp_path / "supabase" / "schemas"
+    schemas.mkdir(parents=True)
+
+    (schemas / "01_tables.sql").write_text(
+        "CREATE TABLE public.companies (id uuid);\n"
+        "CREATE TABLE public.contacts (id uuid);\n",
+    )
+    (schemas / "02_security.sql").write_text(
+        "ALTER TABLE companies ENABLE ROW LEVEL SECURITY;\n"
+        "ALTER TABLE contacts ENABLE ROW LEVEL SECURITY;\n",
+    )
+
+    fresh = SupabaseRLSRule()
+    target = schemas / "01_tables.sql"
+    findings = fresh.visit(None, target.read_bytes(), str(target))
+    assert findings == [], f"unexpected findings: {[f.snippet for f in findings]}"
+
+
+def test_cross_file_rls_missing_still_fires(tmp_path):
+    """If no sibling SQL enables RLS for a table, it must still be flagged."""
+    (tmp_path / ".git").mkdir()
+    schemas = tmp_path / "supabase" / "schemas"
+    schemas.mkdir(parents=True)
+
+    (schemas / "01_tables.sql").write_text("CREATE TABLE public.payments (id uuid);\n")
+    (schemas / "02_security.sql").write_text("-- forgot to enable RLS\n")
+
+    fresh = SupabaseRLSRule()
+    target = schemas / "01_tables.sql"
+    findings = fresh.visit(None, target.read_bytes(), str(target))
+    assert len(findings) == 1
+    assert "payments" in findings[0].snippet
+
+
+def test_cross_file_rls_in_migrations_dir(tmp_path):
+    """RLS enabled under supabase/migrations/ should satisfy schemas/."""
+    (tmp_path / ".git").mkdir()
+    (tmp_path / "supabase" / "schemas").mkdir(parents=True)
+    (tmp_path / "supabase" / "migrations").mkdir(parents=True)
+
+    schema = tmp_path / "supabase" / "schemas" / "tables.sql"
+    schema.write_text("CREATE TABLE public.deals (id uuid);\n")
+    (tmp_path / "supabase" / "migrations" / "00001_rls.sql").write_text(
+        "ALTER TABLE deals ENABLE ROW LEVEL SECURITY;\n",
+    )
+
+    fresh = SupabaseRLSRule()
+    findings = fresh.visit(None, schema.read_bytes(), str(schema))
+    assert findings == []
