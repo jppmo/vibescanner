@@ -28,7 +28,7 @@ jobs:
       - name: Build packages
         run: |
           uv build --package vibescan-scanner
-          uv build --package vibescan
+          uv build --package vibescan-cli
 
       - name: Publish to PyPI
         run: uv publish
