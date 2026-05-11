@@ -1,6 +1,6 @@
 [project]
 name = "vibescan-scanner"
-version = "0.1.0"
+version = "0.1.1"
 description = "Security scanner for AI-generated code"
 requires-python = ">=3.12"
 dependencies = [
