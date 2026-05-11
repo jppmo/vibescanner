@@ -1,0 +1,9 @@
+# Example seed file. Comments and blank lines are ignored.
+# Each non-comment line is a JSON object: {"url", "source", "tool_label"}.
+# `url`         — git clone URL (HTTPS preferred for public repos)
+# `source`      — how this repo was sourced: commit_search, topic_lovable, showcase_bolt, heuristic, etc.
+# `tool_label`  — presumed AI tool: claude, cursor, copilot, lovable, bolt, v0, replit, unknown
+
+{"url": "https://github.com/anthropics/anthropic-quickstarts", "source": "manual", "tool_label": "claude"}
+{"url": "https://github.com/openai/openai-cookbook", "source": "manual", "tool_label": "unknown"}
+{"url": "https://github.com/vercel/ai", "source": "manual", "tool_label": "unknown"}
