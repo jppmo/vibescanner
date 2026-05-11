@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 
     from tree_sitter import Tree
 
+    from vibescan.diff.context import DiffContext
     from vibescan.models import Finding
 
 logger = logging.getLogger(__name__)
@@ -109,16 +110,21 @@ def _is_ignored(path: Path, repo_path: Path, patterns: list[str]) -> bool:
 class ScanEngine:
     """Orchestrates file discovery, parsing, and rule execution for a repo."""
 
-    def __init__(self, repo_path: str | Path) -> None:
+    def __init__(self, repo_path: str | Path, diff_context: DiffContext | None = None) -> None:
         self.repo_path = Path(repo_path).resolve()
+        self.diff_context = diff_context
         self._ignore_patterns = _load_ignore_patterns(self.repo_path)
         self._parsers = self._build_parsers()
         self._rules = self._discover_rules()
         self._origin = AIOriginDetector()
-        self._origin.warmup(self.repo_path)
+        self._origin.warmup(self.repo_path, diff_context=diff_context)
         logger.info(
             "ScanEngine ready",
-            extra={"repo": str(self.repo_path), "rules": len(self._rules)},
+            extra={
+                "repo": str(self.repo_path),
+                "rules": len(self._rules),
+                "diff_mode": diff_context is not None,
+            },
         )
 
     @property
@@ -131,6 +137,11 @@ class ScanEngine:
         """Name of the AI tool detected in git history, or None."""
         return self._origin.git_tool
 
+    @property
+    def velocity_label(self) -> str | None:
+        """Velocity description if velocity signal fired, else None."""
+        return self._origin.velocity_label
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
@@ -142,6 +153,9 @@ class ScanEngine:
             Deduplicated list of findings sorted by severity then filepath.
         """
         findings: list[Finding] = []
+
+        for rule in self._rules:
+            rule.diff_context = self.diff_context
 
         for filepath in self._discover_files():
             language = _language_for(filepath)
@@ -170,13 +184,45 @@ class ScanEngine:
                         extra={"rule": rule.id, "file": str(filepath)},
                     )
 
+        if self.diff_context is not None:
+            findings = self._filter_to_diff(findings)
+
         return self._deduplicate(findings)
+
+    def _filter_to_diff(self, findings: list[Finding]) -> list[Finding]:
+        """Drop findings whose line is not within a changed line range."""
+        ctx = self.diff_context
+        if ctx is None:
+            return findings
+        kept: list[Finding] = []
+        for f in findings:
+            try:
+                fp = Path(f.filepath)
+                if ctx.line_in_diff(fp, f.line):
+                    kept.append(f)
+            except (ValueError, OSError):
+                continue
+        return kept
 
     # ------------------------------------------------------------------
     # File discovery
     # ------------------------------------------------------------------
 
     def _discover_files(self) -> Iterator[Path]:
+        if self.diff_context is not None:
+            for rel in sorted(self.diff_context.changed_files):
+                path = self.repo_path / rel
+                if not path.is_file():
+                    continue
+                try:
+                    size = path.stat().st_size
+                except OSError:
+                    continue
+                if size > MAX_FILE_BYTES:
+                    continue
+                yield path
+            return
+
         for root, dirs, files in os.walk(self.repo_path):
             dirs[:] = sorted(d for d in dirs if d not in SKIP_DIRS)
             for name in sorted(files):

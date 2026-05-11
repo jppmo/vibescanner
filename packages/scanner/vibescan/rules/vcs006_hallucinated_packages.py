@@ -57,6 +57,16 @@ class HallucinatedPackageRule(BaseRule):
         if not packages:
             return []
 
+        if self.diff_context is not None:
+            try:
+                rel = Path(filepath).resolve().relative_to(self.diff_context.repo_path).as_posix()
+            except ValueError:
+                rel = None
+            added = self.diff_context.added_packages.get(rel, set()) if rel else set()
+            packages = [p for p in packages if p.name in added]
+            if not packages:
+                return []
+
         logger.info(
             "Checking packages",
             extra={"file": filepath, "count": len(packages)},

@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Literal
 if TYPE_CHECKING:
     from tree_sitter import Tree
 
+    from vibescan.diff.context import DiffContext
     from vibescan.models import Finding
 
 
@@ -21,12 +22,17 @@ class BaseRule(ABC):
         severity: Default severity level for findings from this rule.
         languages: File extensions this rule applies to, e.g. ["js", "ts"].
                    Use ["*"] to run on every file regardless of extension.
+
+    Instance attributes (set by the engine):
+        diff_context: DiffContext when scanning in --diff mode, else None.
+                      Rules can use this to scope detection to changed lines.
     """
 
     id: str
     name: str
     severity: Literal["CRITICAL", "HIGH", "MEDIUM", "LOW"]
     languages: list[str]
+    diff_context: DiffContext | None = None
 
     @abstractmethod
     def visit(self, tree: Tree | None, source: bytes, filepath: str) -> list[Finding]:

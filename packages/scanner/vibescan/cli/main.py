@@ -72,23 +72,46 @@ def cli(*, debug: bool) -> None:
     type=click.Path(dir_okay=False, writable=True),
     help="Write findings to a file instead of stdout.",
 )
+@click.option(
+    "--diff",
+    "diff_range",
+    default=None,
+    metavar="REF",
+    help=(
+        "Scan only changes vs a git ref (e.g. 'origin/main' or 'origin/main..HEAD'). "
+        "Findings are restricted to changed lines. Adds PR-velocity AI signal."
+    ),
+)
 def scan(
     path: str,
     output_format: str,
     fail_on: str,
     ignore_rules: tuple[str, ...],
     output_path: str | None,
+    diff_range: str | None,
 ) -> None:
     """Scan a repository for security vulnerabilities.
 
     PATH defaults to the current directory.
     """
+    from vibescan.diff.context import DiffContext, DiffError
     from vibescan.engine import ScanEngine
 
     console = Console()
 
+    diff_context = None
+    if diff_range:
+        try:
+            diff_context = DiffContext.from_git(Path(path), diff_range)
+        except DiffError as exc:
+            Console(stderr=True).print(f"[bold red]Error:[/] {exc}")
+            sys.exit(3)
+        if not diff_context.changed_files:
+            console.print("[dim]No changed files in diff range — nothing to scan.[/]")
+            sys.exit(0)
+
     try:
-        engine = ScanEngine(path)
+        engine = ScanEngine(path, diff_context=diff_context)
         findings = engine.scan()
     except Exception as exc:
         Console(stderr=True).print(f"[bold red]Error:[/] {exc}")
@@ -100,10 +123,18 @@ def scan(
 
     repo_ai_score = engine.repo_ai_score
     repo_ai_tool = engine.repo_ai_tool
+    velocity_label = engine.velocity_label
+
+    fmt_kwargs = {
+        "repo_ai_score": repo_ai_score,
+        "repo_ai_tool": repo_ai_tool,
+        "velocity_label": velocity_label,
+        "diff_context": diff_context,
+    }
 
     if output_format.lower() == "json":
         formatter = JSONFormatter()
-        output = formatter.write(findings, path, repo_ai_score=repo_ai_score, repo_ai_tool=repo_ai_tool)
+        output = formatter.write(findings, path, **fmt_kwargs)
         if output_path:
             Path(output_path).write_text(output)
         else:
@@ -113,9 +144,9 @@ def scan(
         if output_path:
             with Path(output_path).open("w") as fh:
                 HumanFormatter(console=Console(file=fh, highlight=False)).write(
-                    findings, path, repo_ai_score=repo_ai_score, repo_ai_tool=repo_ai_tool
+                    findings, path, **fmt_kwargs,
                 )
         else:
-            human.write(findings, path, repo_ai_score=repo_ai_score, repo_ai_tool=repo_ai_tool)
+            human.write(findings, path, **fmt_kwargs)
 
     sys.exit(_compute_exit_code(findings, fail_on.upper()))

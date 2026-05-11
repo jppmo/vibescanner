@@ -8,17 +8,18 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from vibescan.diff.context import DiffContext
+
 from vibescan.classifier.pattern import PatternClassifier
+from vibescan.diff.velocity import PRVelocityDetector
 
 logger = logging.getLogger(__name__)
 
-# Git commit trailer patterns that identify AI authorship
 _AI_COAUTHOR_RE = re.compile(
     r"co-authored-by:.*?(copilot|cursor|claude|chatgpt|gpt-4|devin)",
     re.IGNORECASE,
 )
 
-# Platform-level provenance markers sometimes injected into commit messages
 _AI_PLATFORM_RE = re.compile(
     r"generated with (lovable|bolt|replit|v0)\b",
     re.IGNORECASE,
@@ -67,27 +68,45 @@ class GitMetadataDetector:
 
 
 class AIOriginDetector:
-    """Combine git-history and per-file pattern signals into one score.
+    """Combine git-history, velocity, and per-file pattern signals into one score.
 
     Usage:
         detector = AIOriginDetector()
-        detector.warmup(repo_path)          # once per repo
+        detector.warmup(repo_path, diff_context=...)   # once per repo
         score = detector.score_file(source, language)  # per file
     """
 
     def __init__(self) -> None:
         self._git = GitMetadataDetector()
+        self._velocity = PRVelocityDetector()
         self._classifier = PatternClassifier()
         self._repo_score: float = 0.0
-        self.git_tool: str | None = None  # tool name if git detection fired
+        self.git_tool: str | None = None
+        self.velocity_label: str | None = None
 
-    def warmup(self, repo_path: Path) -> None:
-        """Run git detection once. Must be called before score_file."""
-        self._repo_score, self.git_tool = self._git.detect(repo_path)
+    def warmup(self, repo_path: Path, diff_context: DiffContext | None = None) -> None:
+        """Run repo-level detectors once. Must be called before score_file."""
+        score, tool = self._git.detect(repo_path)
+        self._repo_score = score
+        self.git_tool = tool
+
+        if diff_context is not None:
+            v_score, v_label = self._velocity.detect(diff_context)
+            self._repo_score = max(self._repo_score, v_score)
+            if v_label:
+                self.velocity_label = v_label
+                if self.git_tool is None:
+                    self.git_tool = "velocity"
+
         if self._repo_score > 0:
             logger.info(
                 "Repo-level AI origin score",
-                extra={"score": self._repo_score, "tool": self.git_tool, "repo": str(repo_path)},
+                extra={
+                    "score": self._repo_score,
+                    "tool": self.git_tool,
+                    "velocity": self.velocity_label,
+                    "repo": str(repo_path),
+                },
             )
 
     def score_file(self, source: bytes, language: str) -> float:

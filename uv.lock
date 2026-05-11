@@ -4,7 +4,6 @@ requires-python = ">=3.12"
 
 [manifest]
 members = [
-    "vibescan",
     "vibescan-scanner",
 ]
 
@@ -473,30 +472,14 @@ wheels = [
 ]
 
 [[package]]
-name = "vibescan"
-version = "0.1.0"
-source = { editable = "packages/cli" }
-dependencies = [
-    { name = "click" },
-    { name = "rich" },
-    { name = "vibescan-scanner" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "click", specifier = ">=8.1.0" },
-    { name = "rich", specifier = ">=13.0.0" },
-    { name = "vibescan-scanner", editable = "packages/scanner" },
-]
-
-[[package]]
 name = "vibescan-scanner"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "packages/scanner" }
 dependencies = [
+    { name = "click" },
     { name = "httpx" },
-    { name = "pytest-cov" },
     { name = "redis", extra = ["hiredis"] },
+    { name = "rich" },
     { name = "tree-sitter" },
     { name = "tree-sitter-javascript" },
     { name = "tree-sitter-python" },
@@ -505,9 +488,10 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "click", specifier = ">=8.1.0" },
     { name = "httpx", specifier = ">=0.27.0" },
-    { name = "pytest-cov", specifier = ">=5.0.0" },
     { name = "redis", extras = ["hiredis"], specifier = ">=5.0.0" },
+    { name = "rich", specifier = ">=13.0.0" },
     { name = "tree-sitter", specifier = ">=0.21.0" },
     { name = "tree-sitter-javascript", specifier = ">=0.21.0" },
     { name = "tree-sitter-python", specifier = ">=0.21.0" },

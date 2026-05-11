@@ -40,6 +40,10 @@ ignore = [
     "S608",    # hardcoded SQL — false positive on fix-string text, not actual queries
     "SLF001",  # private member access — engine accesses its own sub-objects' private state
     "S607",    # partial executable path — calling `git` by name is standard
+    "PLR0913", # too many arguments — formatter.write and CLI scan have legitimate fan-out
+    "PLR0912", # too many branches — rule logic with diff-aware filtering branches naturally
+    "TRY003",  # long exception messages — DiffError messages need context to be actionable
+    "EM102",   # f-string in exception — local-only msg= variables don't need this discipline
 ]
 
 [tool.ruff.lint.pydocstyle]

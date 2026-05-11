@@ -29,7 +29,7 @@ jobs:
         run: uv sync --all-packages
 
       - name: Run linter
-        run: uv run ruff check packages/scanner/vibescan packages/cli/vibescan_cli
+        run: uv run ruff check packages/scanner/vibescan
 
       - name: Run tests
         run: uv run pytest packages/scanner/tests/ -v --tb=short --cov=packages/scanner/vibescan --cov-report=term-missing
