@@ -44,6 +44,7 @@ ignore = [
     "PLR0912", # too many branches — rule logic with diff-aware filtering branches naturally
     "TRY003",  # long exception messages — DiffError messages need context to be actionable
     "EM102",   # f-string in exception — local-only msg= variables don't need this discipline
+    "PERF401", # use list.extend — for loops are clearer when each iteration has side effects
 ]
 
 [tool.ruff.lint.pydocstyle]

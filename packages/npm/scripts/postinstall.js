@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 "use strict";
 
-const { execSync, spawnSync } = require("child_process");
+const { spawnSync } = require("child_process");
 
 function hasPython() {
   for (const cmd of ["python3", "python"]) {
@@ -60,11 +60,12 @@ if (hasVibescan(pythonCmd)) {
 }
 
 console.log("vibescan: installing Python package...");
-try {
-  execSync(`${pythonCmd} -m pip install vibescan-scanner --quiet`, {
-    stdio: "inherit",
-  });
-} catch (err) {
+const result = spawnSync(
+  pythonCmd,
+  ["-m", "pip", "install", "vibescan-scanner", "--quiet"],
+  { stdio: "inherit" }
+);
+if (result.status !== 0) {
   console.warn(
     "\nvibescan: pip install failed. Install manually with:\n" +
       "  pip install vibescan-scanner\n"

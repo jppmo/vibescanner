@@ -272,7 +272,7 @@ class ScanEngine:
         seen_ids: set[str] = set()
 
         for path in sorted(rules_dir.glob("*.py")):
-            if path.stem in ("__init__", "base"):
+            if path.stem.startswith("_") or path.stem == "base":
                 continue
 
             module_name = f"vibescan.rules.{path.stem}"

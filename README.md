@@ -63,6 +63,12 @@ vibescan scan . --output findings.json
 | VCS-006 | CRITICAL/HIGH | Hallucinated or anomalous npm/PyPI package | JSON, TOML, TXT |
 | VCS-010 | CRITICAL | Private key or secret committed to repo | `.pem`, `.env` |
 | VCS-011 | HIGH | Secret in frontend env variable (`VITE_*`, `NEXT_PUBLIC_*`) | `.env` |
+| VCS-012 | HIGH | Weak or broken cryptographic primitive (MD5/SHA1/DES/RC4/AES-ECB) | Python, JS, TS |
+| VCS-013 | HIGH | TLS certificate verification disabled | Python, JS, TS |
+| VCS-014 | CRITICAL | SQL injection via string interpolation | Python, JS, TS |
+| VCS-015 | CRITICAL | Shell injection or unsafe eval (`shell=True`, `eval`, `exec`) | Python, JS, TS |
+| VCS-016 | HIGH | Unsafe XML parser vulnerable to XXE | Python |
+| VCS-017 | HIGH | Path traversal via user-controlled input | Python, JS, TS |
 
 ### VCS-001 — Supabase RLS
 
